@@ -21,24 +21,34 @@ import io.atomix.cluster.messaging.ClusterEventingService;
 import io.atomix.primitive.PrimitiveManagementService;
 import io.atomix.primitive.partition.PartitionService;
 
+import java.util.concurrent.ScheduledExecutorService;
+
 /**
  * Default primitive management service.
  */
 public class CorePrimitiveManagementService implements PrimitiveManagementService {
+  private final ScheduledExecutorService executorService;
   private final ClusterService clusterService;
   private final ClusterMessagingService communicationService;
   private final ClusterEventingService eventService;
   private final PartitionService partitionService;
 
   public CorePrimitiveManagementService(
+      ScheduledExecutorService executorService,
       ClusterService clusterService,
       ClusterMessagingService communicationService,
       ClusterEventingService eventService,
       PartitionService partitionService) {
+    this.executorService = executorService;
     this.clusterService = clusterService;
     this.communicationService = communicationService;
     this.eventService = eventService;
     this.partitionService = partitionService;
+  }
+
+  @Override
+  public ScheduledExecutorService getExecutorService() {
+    return executorService;
   }
 
   @Override

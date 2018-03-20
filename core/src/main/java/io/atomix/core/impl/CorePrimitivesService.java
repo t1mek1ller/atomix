@@ -36,6 +36,7 @@ import io.atomix.utils.concurrent.Futures;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -48,11 +49,13 @@ public class CorePrimitivesService implements ManagedPrimitivesService {
   private final AtomicBoolean started = new AtomicBoolean();
 
   public CorePrimitivesService(
+      ScheduledExecutorService executorService,
       ClusterService clusterService,
       ClusterMessagingService communicationService,
       ClusterEventingService eventService,
       PartitionService partitionService) {
     this.managementService = new CorePrimitiveManagementService(
+        executorService,
         clusterService,
         communicationService,
         eventService,

@@ -51,9 +51,11 @@ import io.atomix.primitive.session.ManagedSessionIdService;
 import io.atomix.protocols.backup.partition.PrimaryBackupPartitionGroup;
 import io.atomix.protocols.raft.partition.RaftPartitionGroup;
 import io.atomix.utils.Managed;
+import io.atomix.utils.concurrent.AtomixThreadFactory;
 import io.atomix.utils.concurrent.Futures;
 import io.atomix.utils.concurrent.SingleThreadContext;
 import io.atomix.utils.concurrent.ThreadContext;
+import io.atomix.utils.concurrent.Threads;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,6 +68,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -88,6 +92,7 @@ public class Atomix implements PrimitivesService, Managed<Atomix> {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(Atomix.class);
 
+  private final ScheduledExecutorService executorService;
   private final ManagedMessagingService messagingService;
   private final ManagedClusterMetadataService metadataService;
   private final ManagedClusterService clusterService;
@@ -112,6 +117,7 @@ public class Atomix implements PrimitivesService, Managed<Atomix> {
       ManagedPartitionService partitions,
       PrimitiveTypeRegistry primitiveTypes) {
     PrimitiveTypes.register(primitiveTypes);
+    this.executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors(), Threads.namedThreads("atomix-primitive-%d", LOGGER));
     this.messagingService = checkNotNull(messagingService, "messagingService cannot be null");
     this.metadataService = checkNotNull(metadataService, "metadataService cannot be null");
     this.clusterService = checkNotNull(cluster, "cluster cannot be null");
@@ -120,7 +126,7 @@ public class Atomix implements PrimitivesService, Managed<Atomix> {
     this.corePartitionGroup = checkNotNull(corePartitionGroup, "corePartitionGroup cannot be null");
     this.partitions = checkNotNull(partitions, "partitions cannot be null");
     this.primitiveTypes = checkNotNull(primitiveTypes, "primitiveTypes cannot be null");
-    this.primitives = new CorePrimitivesService(cluster, clusterMessagingService, clusterEventingService, partitions);
+    this.primitives = new CorePrimitivesService(executorService, cluster, clusterMessagingService, clusterEventingService, partitions);
   }
 
   /**
@@ -263,6 +269,7 @@ public class Atomix implements PrimitivesService, Managed<Atomix> {
         .thenComposeAsync(v -> metadataService.stop(), context)
         .thenComposeAsync(v -> messagingService.stop(), context)
         .thenRunAsync(() -> {
+          executorService.shutdown();
           context.close();
           started.set(false);
           LOGGER.info("Stopped");
